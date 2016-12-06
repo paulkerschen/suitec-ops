@@ -3,10 +3,12 @@
 # Abort immediately if a command fails
 set -e
 
-"$(dirname ${0})/verify-suitec-base-dir.sh"
+scripts_dir="$(dirname ${0})"
+
+"${scripts_dir}/verify-suitec-base-dir.sh"
 
 # Make sure nothing else is running before we start the app server
-./deploy/stop.sh
+"${scripts_dir}/stop.sh"
 
 # Base directory of SuiteC deployment
 cd "${SUITEC_BASE_DIR}"
