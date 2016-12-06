@@ -3,7 +3,8 @@
 # Abort immediately if a command fails
 set -e
 
-scripts_dir="$(dirname ${0})"
+cd "$(dirname ${0})"
+scripts_dir="$(pwd)"
 
 "${scripts_dir}/verify-suitec-base-dir.sh"
 
