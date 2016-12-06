@@ -113,6 +113,16 @@ log "Kill the existing SuiteC process"
 log "Copy SuiteC static files to Apache directory: ${DOCUMENT_ROOT}"
 cp -R target/* "${DOCUMENT_ROOT}"
 
+log "Rotate 'forever' log files"
+LOG_DIR=~/log
+mkdir -p "${LOG_DIR}"
+
+timestamp=$(date +"_%F_%H:%M:%S")
+
+for f in $(ls ${LOG_DIR}/forever*.log); do
+  mv "${f}" "${f/\.log/${timestamp}.log}"
+done
+
 log "We are done but SuiteC has NOT been started. Perform post-deploy tasks, if any, then run deploy/start.sh."
 
 exit 0
