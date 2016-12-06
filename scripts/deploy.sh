@@ -3,7 +3,9 @@
 # Fail the entire script when one of the commands in it fails
 set -e
 
-"$(dirname ${0})/verify-suitec-base-dir.sh"
+scripts_dir="$(dirname ${0})"
+
+"${scripts_dir}/verify-suitec-base-dir.sh"
 
 # Base directory of SuiteC deployment
 cd "${SUITEC_BASE_DIR}"
@@ -105,7 +107,7 @@ log "Run gulp build"
 node_modules/.bin/gulp build
 
 log "Kill the existing SuiteC process"
-./deploy/stop.sh
+${scripts_dir}/stop.sh
 
 log "Copy SuiteC static files to Apache directory: ${DOCUMENT_ROOT}"
 cp -R target/* "${DOCUMENT_ROOT}"
