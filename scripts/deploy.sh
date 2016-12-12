@@ -3,6 +3,34 @@
 # Fail the entire script when one of the commands in it fails
 set -e
 
+echo_usage() {
+  echo "SYNOPSIS"
+  echo "     ${0}  [-r remote] [-b branch] [-t tag] [-x]"; echo
+  echo "DESCRIPTION"
+  echo "Available options"; echo
+  echo "     -b      Name of branch in remote repository. Required when deploy-by-tag option is not used."; echo
+  echo "     -r      Name of remote (i.e., tracked) repository. The default is 'origin'."; echo
+  echo "     -t      Name of tag in remote repository. Required when deploy-by-branch option is not used."; echo
+  echo "     -x      After successful deployment, DO NOT start the server"; echo
+  echo "ENVIRONMENT VARIABLES"; echo
+  echo "     DOCUMENT_ROOT"
+  echo "          Apache directory to which we copy SuiteC static files"; echo
+  echo "     SUITEC_BASE_DIR"
+  echo "          Base directory of SuiteC deployment"; echo
+  echo "EXAMPLES"; echo
+  echo "     # Deploy 'irish_dry_stout' branch using remote 'arthur_guinness' repository"
+  echo "          ${0} -r arthur_guinness -b irish_dry_stout"; echo
+  echo "     # Deploy qa branch using default remote (origin)"
+  echo "          ${0} -b qa"; echo
+  echo "     # Deploy tag 1.6"
+  echo "          ${0} -t 1.6"; echo
+  echo "     # Deploy tag 1.6 and DO NOT start the server"
+  echo "          ${0} -t 1.6 -x"; echo
+}
+
+# Give script synopsis when no args are passed.
+[[ $# -gt 0 ]] || { echo_usage; exit 1; }
+
 cd "$(dirname ${0})"
 scripts_dir="$(pwd)"
 
@@ -14,35 +42,21 @@ cd "${SUITEC_BASE_DIR}"
 # The important steps are recorded in time-stamped log file
 logger="tee -a $(date +"${SUITEC_BASE_DIR}/logs/deploy_%Y-%m-%d-%H%M%S.log")"
 
-echo_usage() {
-  echo; echo "USAGE"; echo "  ${0} [-r remote] [-b branch] [-t tag]"; echo
-  echo "Deploy SuiteC per the branch or tag that you specify. This script requires that the environment"
-  echo "variable DOCUMENT_ROOT is set to the Apache directory which will serve SuiteC static files."
-  echo; echo "Common usages:"; echo
-  echo "   # Deploy Arthur's branch"
-  echo "   ${0} -r arthur_guinness -b irish_dry_stout"; echo
-  echo "   # Deploy qa branch using default remote (origin)"
-  echo "   ${0} -b qa"; echo
-  echo "   # Deploy tag 1.6"
-  echo "   ${0} -t 1.6"; echo
-}
-
 log() {
   echo | ${logger}
   echo "${1}" | ${logger}
   echo | ${logger}
 }
 
-# If we have missing requirements then echo usage info and exit.
-[[ $# -gt 0 ]] || { echo_usage; exit 1; }
 [[ "${DOCUMENT_ROOT}" ]] || { echo; echo "[ERROR] 'DOCUMENT_ROOT' is undefined"; echo_usage; exit 1; }
 
 log "DOCUMENT_ROOT, the Apache directory to which we copy SuiteC static files, is set to: ${DOCUMENT_ROOT}"
 
 # Default remote repository
 git_remote="origin"
+start_server=true
 
-while getopts "b:r:t:" arg; do
+while getopts "b:r:t:x" arg; do
   case ${arg} in
     b)
       git_branch="${OPTARG}"
@@ -52,6 +66,9 @@ while getopts "b:r:t:" arg; do
       ;;
     t)
       git_tag="${OPTARG}"
+      ;;
+    x)
+      start_server=false
       ;;
   esac
 done
@@ -123,6 +140,11 @@ for f in $(ls ${LOG_DIR}/forever*.log); do
   mv "${f}" "${f/\.log/${timestamp}.log}"
 done
 
-log "We are done but SuiteC has NOT been started. Perform post-deploy tasks, if any, then run deploy/start.sh."
+if ${start_server}; then
+  log "We are done. SuiteC has been started."
+  "${scripts_dir}/start.sh"
+else
+  log "We are done and SuiteC was NOT started, as requested."
+fi
 
 exit 0
