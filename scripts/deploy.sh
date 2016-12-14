@@ -125,7 +125,7 @@ log "Run gulp build"
 node_modules/.bin/gulp build
 
 log "Kill the existing SuiteC process"
-"${scripts_dir}/stop.sh"
+sudo /sbin/service collabosphere stop
 
 log "Copy SuiteC static files to Apache directory: ${DOCUMENT_ROOT}"
 cp -R target/* "${DOCUMENT_ROOT}"
@@ -142,7 +142,7 @@ done
 
 if ${start_server}; then
   log "We are done. SuiteC has been started."
-  "${scripts_dir}/start.sh"
+  sudo /sbin/service collabosphere start
 else
   log "We are done and SuiteC was NOT started, as requested."
 fi
