@@ -130,15 +130,21 @@ sudo /sbin/service collabosphere stop
 log "Copy SuiteC static files to Apache directory: ${DOCUMENT_ROOT}"
 cp -R target/* "${DOCUMENT_ROOT}"
 
-log "Rotate 'forever' log files"
+# Rotate log files, if necessary. Be careful not to rotate archived/timestamped files.
 LOG_DIR=~/log
 mkdir -p "${LOG_DIR}"
 
-timestamp=$(date +"_%F_%H:%M:%S")
+log_files=$(find ${LOG_DIR} -regex '.*forever[_a-z]*.log')
 
-for f in $(ls ${LOG_DIR}/forever*.log); do
-  mv "${f}" "${f/\.log/${timestamp}.log}"
-done
+if [[ ${log_files} ]]; then
+  log "Rotate log files:"
+  timestamp=$(date +"_%F_%H:%M:%S")
+  for f in ${log_files}; do
+    mv -v -f "${f}" "${f/\.log/${timestamp}.log}"
+  done
+else
+  log "No need to rotate log files; none found."
+fi
 
 if ${start_server}; then
   log "We are done. SuiteC has been started."
