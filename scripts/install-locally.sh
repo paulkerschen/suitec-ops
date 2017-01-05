@@ -22,6 +22,7 @@ npm install
 
 log "Remove existing bower dependencies and re-install"
 rm -rf public/lib
+node_modules/.bin/bower cache clean
 node_modules/.bin/bower install
 
 log "Run gulp build"
