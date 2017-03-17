@@ -1,0 +1,49 @@
+#!/bin/bash
+
+######################################################################
+# SuiteC developers might find the following aliases, funtions useful.
+#
+# Add the following, in order, to your personal ~/.bash_profile:
+#
+# export SUITEC_BASE='...' # Base directory of local repo
+# export SUITEC_PREVIEW_SERVICE_BASE='...'
+# export SUITEC_OPS_BASE='...'
+# source "${SUITEC_OPS_BASE}/bash_profile/local"
+#
+# WARNING: This file is in a public Git repo. It is vital that you
+#          DO NOT add passwords, LTI keys or any other sensitive data.
+#
+######################################################################
+
+# ----------------
+# SuiteC
+# ----------------
+alias cbase='cd ${SUITEC_BASE}'
+alias cgulpbuild='cd ${SUITEC_BASE} && ./node_modules/.bin/gulp build'
+alias cstart='cd ${SUITEC_BASE} && node app'
+alias cinstall='cd ${SUITEC_BASE} && ${SUITEC_OPS_BASE}/scripts/install-locally.sh'
+
+# Database
+alias cdb='psql collabosphere'
+alias cltikeys="cdb -c \"COPY (select lti_key, lti_secret from canvas where canvas_api_domain='localhost:3100') TO STDOUT WITH CSV\""
+
+# Env variables
+export DOCUMENT_ROOT="${SUITEC_BASE}/public"
+
+# Functions
+cgrep() {
+  cd "${SUITEC_BASE}"
+  grep --exclude-dir={.DS_STORE,.git,logs,npm-debug.log,public/assets/img,public/lib,public/viewer,target} \
+    -rinse *.js *.json *.yml apache/*.js apache/*.template config/*.js config/default.json deploy docs email-templates LICENSE node_modules/col-* public README.md scripts
+}
+
+# ----------------
+# Preview Service
+# ----------------
+alias cpsbase='cd ${SUITEC_PREVIEW_SERVICE_BASE}'
+
+# Functions
+cpsgrep() {
+  cd "${SUITEC_PREVIEW_SERVICE_BASE}"
+  grep -rinse *.js *.json buildspec.yml config deploy etc lib LICENSE README.md s3-data
+}
