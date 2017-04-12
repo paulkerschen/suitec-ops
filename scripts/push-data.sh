@@ -9,9 +9,13 @@ echo_usage() {
   echo "DESCRIPTION"
   echo "Available options"
   echo "     -d      Database connection information in the form 'host:port:database:username'. Required."
+  echo "     -i      Mark all courses as inactive after push (may be desirable when populating a test environment). Optional."
 }
 
-while getopts "d:" arg; do
+# Default
+inactivate_courses=false
+
+while getopts "d:i" arg; do
   case ${arg} in
     d)
       db_params=(${OPTARG//:/ })
@@ -19,6 +23,9 @@ while getopts "d:" arg; do
       db_port=${db_params[1]}
       db_database=${db_params[2]}
       db_username=${db_params[3]}
+      ;;
+    i)
+      inactivate_courses=true
       ;;
   esac
 done
@@ -51,6 +58,10 @@ read -s db_password; echo; echo
 
 echo "Will push local CSV data to database ${db_database} at ${db_host}:${db_port}."; echo
 
+echo "Clearing out existing data..."
+# Truncating the courses table cascades along foreign key references and clears everything in one fell swoop.
+PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username} -c "truncate courses cascade"; echo
+
 push_csv() {
   echo "Copying ${1} to database..."
 
@@ -58,9 +69,20 @@ push_csv() {
   header_row=`head -1 ${1}.csv`
   columns=${header_row//|/,}
 
-  # Delete all rows from the specified table and replace with local CSV file contents.
-  cat ${1}.csv | PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username}\
-  -c "delete from ${1}; copy ${1} (${columns}) from stdin with (format csv, header true, delimiter '|')"
+  # Load local CSV file contents into table.
+  sql="copy ${1} (${columns}) from stdin with (format csv, header true, delimiter '|')"
+  # Tables with an autoincrementing id column must reset the sequence after load.
+  if [[ ${columns} == id* ]]; then
+    sql+="; select setval('${1}_id_seq', (select max(id) from ${1}))"
+  fi
+  # If requested, mark all courses as inactive.
+  if ${inactivate_courses} && [[ $1 == "courses" ]]; then
+    echo "Will mark all courses as inactive."
+    sql+="; update courses set active=false"
+  fi
+
+  # Connect to the database and execute SQL.
+  cat ${1}.csv | PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username} -c "${sql}"
 }
 
 # Push CSV file contents to the database.
