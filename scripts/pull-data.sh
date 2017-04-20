@@ -5,12 +5,12 @@ set -e
 
 echo_usage() {
   echo "SYNOPSIS"
-  echo "     ${0} -d db_connection -c canvas_hostname [-r replacement_canvas_hostname]"; echo
+  echo "     ${0} -d db_connection [-c canvas_hostname [-r replacement_canvas_hostname]]"; echo
   echo "DESCRIPTION"
   echo "Available options"
   echo "     -d      Database connection information in the form 'host:port:database:username'. Required."
-  echo "     -c      Hostname of the Canvas instance for which SuiteC course data should be pulled. Required."
-  echo "     -r      If provided, all references to Canvas-hosted resources will be changed to this hostname. Optional."
+  echo "     -c      Hostname of the Canvas instance for which SuiteC course data should be pulled. Optional, defaults to all instances."
+  echo "     -r      If provided, all references to Canvas-hosted resources will be changed to this hostname. Optional, requires -c."
 }
 
 while getopts "c:d:r:" arg; do
@@ -37,8 +37,8 @@ done
   echo_usage
   exit 1
 }
-[[ "${source_canvas}" ]] || { 
-  echo "[ERROR] You must specify a Canvas instance for which data should be pulled."; echo
+[[ "${replacement_canvas}" ]] && ! [[ "${source_canvas}" ]] && { 
+  echo "[ERROR] A replacement Canvas hostname cannot be specified without also specifying a source Canvas instance."; echo
   echo_usage
   exit 1
 }
@@ -46,10 +46,12 @@ done
 echo -n "Enter database password: "
 read -s db_password; echo; echo
 
-if [[ ${replacement_canvas} ]]; then
+if [[ "${replacement_canvas}" ]]; then
   echo "Will pull data for all courses hosted under ${source_canvas}, changing host references to ${replacement_canvas}."
-else
+elif [[ "${source_canvas}" ]]; then
   echo "Will pull data for all courses hosted under ${source_canvas}."
+else
+  echo "Will pull data for all courses."  
 fi
 echo
 
@@ -63,54 +65,73 @@ output_csv() {
 # Query each table for data associated with the supplied Canvas instance. The only table we do not query is the
 # 'canvas' table itself.
 
-# First, pull data from tables that contain no references to specific Canvas hostnames.
+# First, pull data from tables that contain no references to specific Canvas hostnames. Select by Canvas instance
+# if that option is specified.
 
-output_csv "activities" "select a.* from activities a
-            join courses c
-            on a.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
+if [[ "${source_canvas}" ]]; then
 
-output_csv "activity_types" "select at.* from activity_types at
-            join courses c
-            on at.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
+  output_csv "activities" "select a.* from activities a
+              join courses c
+              on a.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
 
-output_csv "assets_categories" "select ac.* from assets_categories ac
-            join (categories cat join courses c
-              on cat.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
-            on ac.category_id = cat.id"
+  output_csv "activity_types" "select at.* from activity_types at
+              join courses c
+              on at.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
 
-output_csv "asset_users" "select au.* from asset_users au
-            join (users u join courses c
-              on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
-            on au.user_id = u.id"
+  output_csv "assets_categories" "select ac.* from assets_categories ac
+              join (categories cat join courses c
+                on cat.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
+              on ac.category_id = cat.id"
 
-output_csv "categories" "select cat.* from categories cat
-            join courses c
-            on cat.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
+  output_csv "asset_users" "select au.* from asset_users au
+              join (users u join courses c
+                on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
+              on au.user_id = u.id"
 
-output_csv "chats" "select ch.* from chats ch
-            join (users u join courses c
-              on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
-            on ch.user_id = u.id"
+  output_csv "categories" "select cat.* from categories cat
+              join courses c
+              on cat.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
 
-output_csv "comments" "select com.* from comments com
-            join (users u join courses c
-              on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
-            on com.user_id = u.id"
+  output_csv "chats" "select ch.* from chats ch
+              join (users u join courses c
+                on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
+              on ch.user_id = u.id"
 
-output_csv "whiteboard_members" "select wm.* from whiteboard_members wm
-            join (whiteboards w join courses c
-              on w.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
-            on wm.whiteboard_id = w.id"
+  output_csv "comments" "select com.* from comments com
+              join (users u join courses c
+                on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
+              on com.user_id = u.id"
 
-output_csv "users" "select u.* from users u
-            join courses c
-            on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
+  output_csv "whiteboard_members" "select wm.* from whiteboard_members wm
+              join (whiteboards w join courses c
+                on w.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
+              on wm.whiteboard_id = w.id"
+
+  output_csv "users" "select u.* from users u
+              join courses c
+              on u.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
+
+# If no source Canvas is specified, select all rows.
+
+else
+
+  output_csv "activities" "select * from activities"
+  output_csv "activity_types" "select * from activity_types"
+  output_csv "assets_categories" "select * from assets_categories"
+  output_csv "asset_users" "select * from asset_users"
+  output_csv "categories" "select * from categories"
+  output_csv "chats" "select * from chats"
+  output_csv "comments" "select * from comments"
+  output_csv "whiteboard_members" "select * from whiteboard_members"
+  output_csv "users" "select * from users"
+
+fi
 
 # Next, pull data from tables that do contain references to specific Canvas hostnames. 
 
 # If the Canvas hostname should be changed, run a replace command on certain columns as part of the query.
 
-if [[ ${replacement_canvas} ]]; then
+if [[ "${replacement_canvas}" ]]; then
 
   output_csv "assets" "select a.id, a.type, a.url,
                 replace(a.download_url, '${source_canvas}', '${replacement_canvas}') as download_url,
@@ -157,7 +178,7 @@ if [[ ${replacement_canvas} ]]; then
 
 # If the Canvas hostname should not be changed, select all columns without changes.
 
-else
+elif [[ "${source_canvas}" ]]; then
 
   output_csv "assets" "select a.* from assets a
               join courses c
@@ -179,6 +200,16 @@ else
               join (whiteboards w join courses c
                 on w.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
               on we.whiteboard_id = w.id"
+
+# If no source Canvas is specified, select all rows.
+
+else
+
+  output_csv "assets" "select * from assets"
+  output_csv "asset_whiteboard_elements" "select * from asset_whiteboard_elements"
+  output_csv "courses" "select * from courses"
+  output_csv "whiteboards" "select * from whiteboards"              
+  output_csv "whiteboard_elements" "select * from whiteboard_elements"
 
 fi
 
