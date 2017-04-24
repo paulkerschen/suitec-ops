@@ -56,11 +56,21 @@ done
 echo -n "Enter database password: "
 read -s db_password; echo; echo
 
-echo "Will push local CSV data to database ${db_database} at ${db_host}:${db_port}."; echo
+echo "WARNING: You are on the verge of deleting ALL existing course and user data from the database '${db_database}' at ${db_host}:${db_port}."
+echo -n "To accept the consequences, type 'consentio': "
+read confirmation; echo
+
+[[ "${confirmation}" = 'consentio' ]] || {
+  echo "Aborting."
+  exit 1
+}
 
 echo "Clearing out existing data..."
-# Truncating the courses table cascades along foreign key references and clears everything in one fell swoop.
+# Truncating the course and user tables cascades along foreign key references and clears everything in one fell swoop.
 PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username} -c "truncate courses cascade"; echo
+PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username} -c "truncate users cascade"; echo
+
+echo "Pushing local CSV data..."; echo
 
 push_csv() {
   echo "Copying ${1} to database..."
