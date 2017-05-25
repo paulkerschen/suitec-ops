@@ -69,6 +69,7 @@ echo "Clearing out existing data..."
 # Truncating the course and user tables cascades along foreign key references and clears everything in one fell swoop.
 PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username} -c "truncate courses cascade"; echo
 PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username} -c "truncate users cascade"; echo
+PGPASSWORD=${db_password} psql -h ${db_host} -p ${db_port} -d ${db_database} --username ${db_username} -c "truncate categories cascade"; echo
 
 echo "Pushing local CSV data..."; echo
 
