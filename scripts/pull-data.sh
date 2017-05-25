@@ -24,6 +24,7 @@ while getopts "c:d:r:" arg; do
       db_port=${db_params[1]}
       db_database=${db_params[2]}
       db_username=${db_params[3]}
+      db_password=${db_params[4]}
       ;;
     r)
       replacement_canvas="${OPTARG}"
@@ -37,21 +38,23 @@ done
   echo_usage
   exit 1
 }
-[[ "${replacement_canvas}" ]] && ! [[ "${source_canvas}" ]] && { 
+[[ "${replacement_canvas}" ]] && ! [[ "${source_canvas}" ]] && {
   echo "[ERROR] A replacement Canvas hostname cannot be specified without also specifying a source Canvas instance."; echo
   echo_usage
   exit 1
 }
 
-echo -n "Enter database password: "
-read -s db_password; echo; echo
+if ! [[ "${db_password}" ]]; then
+  echo -n "Enter database password: "
+  read -s db_password; echo; echo
+fi
 
 if [[ "${replacement_canvas}" ]]; then
   echo "Will pull data for all courses hosted under ${source_canvas}, changing host references to ${replacement_canvas}."
 elif [[ "${source_canvas}" ]]; then
   echo "Will pull data for all courses hosted under ${source_canvas}."
 else
-  echo "Will pull data for all courses."  
+  echo "Will pull data for all courses."
 fi
 echo
 
@@ -127,7 +130,7 @@ else
 
 fi
 
-# Next, pull data from tables that do contain references to specific Canvas hostnames. 
+# Next, pull data from tables that do contain references to specific Canvas hostnames.
 
 # If the Canvas hostname should be changed, run a replace command on certain columns as part of the query.
 
@@ -135,7 +138,7 @@ if [[ "${replacement_canvas}" ]]; then
 
   output_csv "assets" "select a.id, a.type, a.url,
                 replace(a.download_url, '${source_canvas}', '${replacement_canvas}') as download_url,
-                a.title, a.canvas_assignment_id, a.description, a.thumbnail_url, a.image_url, a.mime, 
+                a.title, a.canvas_assignment_id, a.description, a.thumbnail_url, a.image_url, a.mime,
                 a.source, a.body, a.likes, a.dislikes, a.views, a.comment_count, a.created_at, a.updated_at,
                 a.deleted_at, a.course_id, a.pdf_url, a.preview_status, a.preview_metadata, a.visible
               from assets a
@@ -150,7 +153,7 @@ if [[ "${replacement_canvas}" ]]; then
                 on a.course_id = c.id and c.canvas_api_domain = '${source_canvas}')
               on awe.asset_id = a.id"
 
-  output_csv "courses" "select c.id, c.canvas_course_id, c.enable_upload, c.name, 
+  output_csv "courses" "select c.id, c.canvas_course_id, c.enable_upload, c.name,
                 replace(c.assetlibrary_url, '${source_canvas}', '${replacement_canvas}') as assetlibrary_url,
                 replace(c.dashboard_url, '${source_canvas}', '${replacement_canvas}') as dashboard_url,
                 replace(c.engagementindex_url, '${source_canvas}', '${replacement_canvas}') as engagementindex_url,
@@ -194,7 +197,7 @@ elif [[ "${source_canvas}" ]]; then
 
   output_csv "whiteboards" "select w.* from whiteboards w
               join courses c
-              on w.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"              
+              on w.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
 
   output_csv "whiteboard_elements" "select we.* from whiteboard_elements we
               join (whiteboards w join courses c
@@ -208,7 +211,7 @@ else
   output_csv "assets" "select * from assets"
   output_csv "asset_whiteboard_elements" "select * from asset_whiteboard_elements"
   output_csv "courses" "select * from courses"
-  output_csv "whiteboards" "select * from whiteboards"              
+  output_csv "whiteboards" "select * from whiteboards"
   output_csv "whiteboard_elements" "select * from whiteboard_elements"
 
 fi

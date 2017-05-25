@@ -23,6 +23,7 @@ while getopts "d:i" arg; do
       db_port=${db_params[1]}
       db_database=${db_params[2]}
       db_username=${db_params[3]}
+      db_password=${db_params[4]}
       ;;
     i)
       inactivate_courses=true
@@ -39,10 +40,10 @@ done
 
 # Because of foreign key constraints, we must populate tables in order of association. The 'canvas' table
 # in the database remains unchanged.
-declare -a tables=(courses 
-                   users assets asset_users comments 
+declare -a tables=(courses
+                   users assets asset_users comments
                    activity_types activities
-                   categories assets_categories 
+                   categories assets_categories
                    whiteboards whiteboard_members asset_whiteboard_elements whiteboard_elements chats)
 
 # Check that all CSV files exist in the local directory.
@@ -53,8 +54,10 @@ for table in "${tables[@]}"; do
   }
 done
 
-echo -n "Enter database password: "
-read -s db_password; echo; echo
+if ! [[ "${db_password}" ]]; then
+  echo -n "Enter database password: "
+  read -s db_password; echo; echo
+end
 
 echo "WARNING: You are on the verge of deleting ALL existing course and user data from the database '${db_database}' at ${db_host}:${db_port}."
 echo -n "To accept the consequences, type 'consentio': "
