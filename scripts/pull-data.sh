@@ -79,7 +79,8 @@ if [[ "${source_canvas}" ]]; then
 
   output_csv "activities" "select a.* from activities a
               join courses c
-              on a.course_id = c.id and c.canvas_api_domain = '${source_canvas}'"
+              on a.course_id = c.id and c.canvas_api_domain = '${source_canvas}'
+              order by id"
 
   output_csv "activity_types" "select at.* from activity_types at
               join courses c
@@ -122,7 +123,7 @@ if [[ "${source_canvas}" ]]; then
 
 else
 
-  output_csv "activities" "select * from activities"
+  output_csv "activities" "select * from activities order by id"
   output_csv "activity_types" "select * from activity_types"
   output_csv "assets_categories" "select * from assets_categories"
   output_csv "asset_users" "select * from asset_users"
